@@ -9,6 +9,33 @@ from ...caluma_form.models import Question
 from .. import api, models
 
 
+@pytest.mark.xfail(
+    reason="This needs to be fixed upstream in graphql-python/graphene (issue #1419)"
+)
+def test_query_all_cases_filtered(
+    db, case, flow, question_factory, schema_executor, snapshot
+):
+    # Change back the workaround in the frontend as soon as this test fails aka the issue is fixed upstream
+    question_factory(slug="is-paper")
+
+    failing_query = """
+        query ($instanceId: GenericScalar!) {
+          allCases(filter: [
+
+            { hasAnswer: { question: "is-paper", value: "einz-weid-rei" } }
+            { metaValue: { key: "camac-instance-id", value: $instanceId } }
+
+          ]) {
+            totalCount
+            }
+        }
+    """
+    variables = {"instanceId": 4}
+    result = schema_executor(failing_query, variable_values=variables)
+    assert not result.errors
+    assert result.data["allCases"]["totalCount"] == 0
+
+
 @pytest.mark.parametrize(
     "case__status,result_count",
     [(models.Case.STATUS_RUNNING, 1), (models.Case.STATUS_COMPLETED, 0)],
